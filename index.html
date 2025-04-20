@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Species Identifier</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    #preview { max-width: 300px; margin-top: 10px; }
+    #results { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Species Identifier (Powered by iNaturalist)</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <img id="preview" />
+  <br>
+  <button onclick="identifySpecies()">Identify</button>
+  <div id="results"></div>
+
+  <script>
+    const apiEndpoint = "https://api.inaturalist.org/v1/computervision/score_image";
+    const apiToken = "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX2lkIjo5MTU4ODEwLCJleHAiOjE3NDUyNTYyMTJ9.RUPbLBMVlyfpFDcadPL5YTs3S3FRPKaYSxHzAN0dHkNdcEzQc-XuOivbhfYDktudEKdD01BHIgUoTqllErClfw";
+
+    async function identifySpecies() {
+      const input = document.getElementById('imageInput');
+      const file = input.files[0];
+
+      if (!file) {
+        alert("Please upload an image.");
+        return;
+      }
+
+      // Preview image
+      const reader = new FileReader();
+      reader.onload = () => document.getElementById('preview').src = reader.result;
+      reader.readAsDataURL(file);
+
+      // Send to iNaturalist
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiToken}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      const resultsDiv = document.getElementById("results");
+
+      if (data.results && data.results.length > 0) {
+        const top = data.results[0];
+        resultsDiv.innerHTML = `
+          <h3>Top Match</h3>
+          <p><strong>${top.taxon.preferred_common_name || top.taxon.name}</strong> (${top.taxon.name})</p>
+          <p>Confidence: ${Math.round(top.score * 100)}%</p>
+          <img src="${top.taxon.default_photo.medium_url}" style="max-width:200px;">
+        `;
+      } else {
+        resultsDiv.innerText = "No species match found.";
+      }
+    }
+  </script>
+</body>
+</html>
